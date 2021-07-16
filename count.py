@@ -83,8 +83,13 @@ if __name__ == "__main__":
     # NOTE: Change these ROIs for different videos
     # (slope, intercept, is_upper_plane)
     # video: tay_son_input
+    # half_planes = [
+    #     (0.3, 200, False)
+    # ]
+    # video: tay_son_output
     half_planes = [
-        (0.3, 200, False)
+        (0, 200, False),
+        (-0.83, 680, False),
     ]
 
     num_frames = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
