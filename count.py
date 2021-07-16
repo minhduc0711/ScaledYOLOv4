@@ -133,7 +133,8 @@ if __name__ == "__main__":
                 objects_appeared.add(obj_id)
                 class_counts[c] += 1
                 if args.save_output:
-                    logs.append([obj_id, c, vid.get(cv2.CAP_PROP_POS_MSEC)])
+                    logs.append([obj_id, c,
+                                 vid.get(cv2.CAP_PROP_POS_MSEC) / 1000])
 
         count_str = ", ".join(
             [f"{k}: {v}" for k, v in class_counts.items()]
@@ -155,4 +156,4 @@ if __name__ == "__main__":
     if args.save_output:
         out_video.release()
         pd.DataFrame(logs).to_csv(logs_path, index=False,
-                                  header=["object_id", "class", "timestamp_ms"])
+                                  header=["object_id", "class", "timestamp"])
