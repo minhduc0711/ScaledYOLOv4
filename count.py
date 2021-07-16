@@ -13,6 +13,7 @@ from models.experimental import attempt_load
 from utils.datasets import letterbox
 from utils.general import check_img_size, non_max_suppression, scale_coords, \
         plot_one_box
+from utils.torch_utils import select_device
 
 from sort import Sort
 
@@ -40,12 +41,15 @@ if __name__ == "__main__":
     parser.add_argument("--img-size", type=int, default="1280")
     parser.add_argument("--save-output", action="store_true")
     parser.add_argument("--weights", type=str, default="./weights/yolov4-p6.pt")
-    parser.add_argument("--device", type=int, default=0)
+    parser.add_argument("--device", type=str, default="0")
     args = parser.parse_args()
 
+    device = select_device(args.device)
     print(f'Loading weights from {args.weights}')
-    model = attempt_load(args.weights, map_location=args.device)  # load FP32 model
+    model = attempt_load(args.weights, map_location=device)  # load FP32 model
+
     class_names = model.module.names if hasattr(model, 'module') else model.names
+    random.seed(42)
     colors = [[random.randint(0, 255) for _ in range(3)] for _ in range(len(class_names))]
 
     img_size = 1280
@@ -85,7 +89,7 @@ if __name__ == "__main__":
         img = letterbox(img0, new_shape=img_size)[0]
         img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
         img = np.ascontiguousarray(img)
-        img = torch.from_numpy(img).to(args.device)
+        img = torch.from_numpy(img).to(device)
         img = img / 255.0  # 0 - 255 to 0.0 - 1.0
         if img.ndimension() == 3:
             img = img.unsqueeze(0)
@@ -102,7 +106,7 @@ if __name__ == "__main__":
         for *xyxy, obj_id, cls_id in boxes:
             cls_id = int(cls_id)
             obj_id = int(obj_id)
-            c = class_names[int(cls)]
+            c = class_names[cls_id]
             label = f"{c} - {obj_id}"
             plot_one_box(xyxy, img0, label=label, color=colors[cls_id], line_thickness=2)
             if obj_id not in objects_appeared:
