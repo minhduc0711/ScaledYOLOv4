@@ -106,6 +106,12 @@ if __name__ == "__main__":
         for *xyxy, obj_id, cls_id in boxes:
             cls_id = int(cls_id)
             obj_id = int(obj_id)
+            # bicycle -> motorbike, truck -> car
+            if cls_id == 1:
+                cls_id = 3
+            elif cls_id == 7:
+                cls_id = 2
+
             c = class_names[cls_id]
             label = f"{c} - {obj_id}"
             plot_one_box(xyxy, img0, label=label, color=colors[cls_id], line_thickness=2)
