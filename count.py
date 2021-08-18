@@ -34,7 +34,7 @@ def filter_objects_by_roi(boxes, img, rois):
         ys_br = boxes[:, 3]
         # filters object lying on the ROI half-plane
         sign = -1 if is_upper_plane else 1
-        keep = ys_br < (sign * (slope * xs_br + intercept))
+        keep = ys_br > (sign * (slope * xs_br + intercept))
         boxes = boxes[keep]
     return boxes
 
@@ -68,7 +68,9 @@ if __name__ == "__main__":
         input_fname = os.path.basename(args.video)
         os.makedirs("output", exist_ok=True)
         output_path = os.path.join("output", input_fname.replace(".mp4", "_pred.mp4"))
-        out_video = cv2.VideoWriter(output_path, fourcc, 20.0, (vw,vh))
+
+        fps = vid.get(cv2.CAP_PROP_FPS)
+        out_video = cv2.VideoWriter(output_path, fourcc, fps, (vw,vh))
 
         logs_path = os.path.join("output", input_fname.replace(".mp4", ".csv"))
         logs = []
