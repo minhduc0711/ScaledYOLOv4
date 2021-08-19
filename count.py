@@ -29,8 +29,8 @@ def filter_objects_by_roi(boxes, img, rois):
         ys = ys[keep]
         img[ys, xs, :] = (0, 0, 255)
 
-        # bottom right corners
-        xs_br = boxes[:, 2]
+        # bottom left corners
+        xs_br = boxes[:, 0]
         ys_br = boxes[:, 3]
         # filters object lying on the ROI half-plane
         sign = -1 if is_upper_plane else 1
@@ -38,19 +38,19 @@ def filter_objects_by_roi(boxes, img, rois):
         boxes = boxes[keep]
 
     # DEBUG
-    for b in boxes:
-        img = cv2.circle(img, (b[2], b[3]), 5, (255, 0, 0), -1)
+    # for b in boxes:
+    #     img = cv2.circle(img, (b[2], b[3]), 5, (255, 0, 0), -1)
     return boxes
 
 
 def filter_objects_by_size(boxes, min_sizes=None):
     if min_sizes is None:
         return boxes
-    keep = np.ones(boxes.shape[0], dtype=np.bool)
+    keep = torch.ones(boxes.shape[0], dtype=torch.bool).cuda()
     for (cls_id, min_size) in min_sizes:
-        is_concerned_class = boxes[:, 4] == cls_id
+        is_concerned_class = boxes[:, 5] == cls_id
         boxes_small = boxes[is_concerned_class]
-        keep[is_concerned_class] = ((boxes_small[:, 2] - boxes_small[:, 0]) * (boxes_small[:, 3] - boxes_small[:, 1])) < min_size
+        keep[is_concerned_class] = ((boxes_small[:, 2] - boxes_small[:, 0]) * (boxes_small[:, 3] - boxes_small[:, 1])) > min_size
     return boxes[keep]
 
 if __name__ == "__main__":
@@ -100,11 +100,10 @@ if __name__ == "__main__":
     # (slope, intercept, is_upper_plane)
     # video: tay_son_input
     half_planes = [
-        # (-0.1, 380, False),
         (0.3, 200, False)
     ]
     min_sizes = [
-        (2, 500)
+        (2, 7500)
     ]
 
     # video: tay_son_output
@@ -150,7 +149,8 @@ if __name__ == "__main__":
                 cls_id = 2
 
             c = class_names[cls_id]
-            label = f"{c} - {obj_id}"
+            area = int((xyxy[2] - xyxy[0]) * (xyxy[3] -xyxy[1]))
+            label = f"{c} - {obj_id} - {area}"
             plot_one_box(xyxy, img0, label=label, color=colors[cls_id], line_thickness=2)
             if obj_id not in objects_appeared:
                 objects_appeared.add(obj_id)
