@@ -152,15 +152,15 @@ if __name__ == "__main__":
             area = int((xyxy[2] - xyxy[0]) * (xyxy[3] -xyxy[1]))
             label = f"{c} - {obj_id} - {area}"
             plot_one_box(xyxy, img0, label=label, color=colors[cls_id], line_thickness=2)
-            if obj_id not in objects_appeared:
-                objects_appeared.add(obj_id)
-                class_counts[c] += 1
-                if args.save_output:
-                    logs.append([obj_id, c,
-                                 vid.get(cv2.CAP_PROP_POS_MSEC) / 1000])
+            # if obj_id not in objects_appeared:
+                # objects_appeared.add(obj_id)
+                # class_counts[c] += 1
+                # if args.save_output:
+                #     logs.append([obj_id, c,
+                #                  vid.get(cv2.CAP_PROP_POS_MSEC) / 1000])
 
         count_str = ", ".join(
-            [f"{k}: {v}" for k, v in class_counts.items()]
+            [f"{class_names[k]}: {v}" for k, v in tracker.class_counts.items()]
         )
         img0 = cv2.putText(img0, count_str, (15, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 0), 5)
         img0 = cv2.putText(img0, count_str, (15, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 2)
@@ -178,5 +178,5 @@ if __name__ == "__main__":
     cv2.destroyAllWindows()
     if args.save_output:
         out_video.release()
-        pd.DataFrame(logs).to_csv(logs_path, index=False,
-                                  header=["object_id", "class", "timestamp"])
+        # pd.DataFrame(logs).to_csv(logs_path, index=False,
+        #                           header=["object_id", "class", "timestamp"])

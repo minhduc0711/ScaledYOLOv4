@@ -121,16 +121,25 @@ class KalmanBoxTracker(object):
         self.hit_streak = 0
         self.age = 0
         self.objclass = int(bbox[5])
+        self.first_bbox = bbox
+        self.last_bbox = None
 
     def update(self,bbox):
         """
         Updates the state vector with observed bbox.
         """
+
         self.time_since_update = 0
         self.history = []
         self.hits += 1
         self.hit_streak += 1
         self.kf.update(convert_bbox_to_z(bbox))
+        # update if not touching the left edge of image:
+        if bbox[0] > 0:
+            # if self.id + 1 == 27:
+            #     print(bbox)
+            self.last_bbox = bbox
+
 
     def predict(self):
         """
@@ -208,6 +217,7 @@ class Sort(object):
         self.iou_threshold = iou_threshold
         self.trackers = []
         self.frame_count = 0
+        self.class_counts = defaultdict(lambda: 0)
 
     def update(self, dets=np.empty((0, 5))):
         """
@@ -230,7 +240,7 @@ class Sort(object):
                 to_del.append(t)
         trks = np.ma.compress_rows(np.ma.masked_invalid(trks))
         for t in reversed(to_del):
-            self.trackers.pop(t)
+            self.remove_tracker(t)
         matched, unmatched_dets, unmatched_trks = associate_detections_to_trackers(dets,trks, self.iou_threshold)
 
         # update matched trackers with assigned detections
@@ -250,10 +260,21 @@ class Sort(object):
             i -= 1
             # remove dead tracklet
             if(trk.time_since_update > self.max_age):
-                self.trackers.pop(i)
+                self.remove_tracker(i)
         if(len(ret)>0):
             return np.concatenate(ret)
         return np.empty((0,5))
+
+    def remove_tracker(self, t):
+        trk = self.trackers.pop(t)
+        if trk.last_bbox is not None:
+            # first_size = (trk.first_bbox[2] - trk.first_bbox[0]) * (trk.first_bbox[3] - trk.first_bbox[1])
+            # last_size = (trk.last_bbox[2] - trk.last_bbox[0]) * (trk.last_bbox[3] - trk.last_bbox[1])
+            if trk.first_bbox[0] <  trk.last_bbox[0]:
+                # TODO: log timestamps here as well
+                self.class_counts[trk.objclass] += 1
+                if trk.objclass == 2:
+                    print(f"car{trk.id + 1}: {trk.first_bbox[0]} -> {trk.last_bbox[0]}")
 
 def parse_args():
     """Parse input arguments."""
