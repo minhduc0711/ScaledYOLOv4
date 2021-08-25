@@ -134,11 +134,8 @@ class KalmanBoxTracker(object):
         self.hits += 1
         self.hit_streak += 1
         self.kf.update(convert_bbox_to_z(bbox))
-        # update if not touching the left edge of image:
-        if bbox[0] > 0:
-            # if self.id + 1 == 27:
-            #     print(bbox)
-            self.last_bbox = bbox
+        # update last position
+        self.last_bbox = bbox
 
 
     def predict(self):
@@ -270,11 +267,17 @@ class Sort(object):
         if trk.last_bbox is not None:
             # first_size = (trk.first_bbox[2] - trk.first_bbox[0]) * (trk.first_bbox[3] - trk.first_bbox[1])
             # last_size = (trk.last_bbox[2] - trk.last_bbox[0]) * (trk.last_bbox[3] - trk.last_bbox[1])
-            if trk.first_bbox[0] <  trk.last_bbox[0]:
+            if trk.first_bbox[0] < trk.last_bbox[0]:
                 # TODO: log timestamps here as well
                 self.class_counts[trk.objclass] += 1
-                if trk.objclass == 2:
-                    print(f"car{trk.id + 1}: {trk.first_bbox[0]} -> {trk.last_bbox[0]}")
+                if trk.objclass == 3:
+                    print(f"moto{trk.id + 1} ACCEPTED: {trk.first_bbox[0]} -> {trk.last_bbox[0]}")
+            else:
+                if trk.objclass == 3:
+                    print(f"moto{trk.id + 1} rejected: {trk.first_bbox[0]} -> {trk.last_bbox[0]}")
+        else:
+            if trk.objclass == 3:
+                    print(f"moto{trk.id + 1} rejected: no last bbox")
 
 def parse_args():
     """Parse input arguments."""

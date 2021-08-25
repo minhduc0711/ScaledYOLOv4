@@ -98,13 +98,14 @@ if __name__ == "__main__":
 
     # NOTE: Change these ROIs for different videos
     # (slope, intercept, is_upper_plane)
+
     # video: tay_son_input
-    half_planes = [
-        (0.3, 200, False)
-    ]
-    min_sizes = [
-        (2, 7500)
-    ]
+    # half_planes = [
+    #     (0.3, 200, False)
+    # ]
+    # min_sizes = [
+    #     (2, 7500)
+    # ]
 
     # video: tay_son_output
     # half_planes = [
@@ -112,6 +113,12 @@ if __name__ == "__main__":
     #     (-0.83, 680, False),
     # ]
     # min_sizes = None
+
+    # video: chua_boc_input
+    half_planes = [
+        (0.2, 300, False)
+    ]
+    min_sizes = None
 
     num_frames = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
     pbar = tqdm(total=num_frames)
@@ -136,17 +143,18 @@ if __name__ == "__main__":
         boxes = pred[0]
         boxes[:, :4] = scale_coords(img.shape[2:], boxes[:, :4], img0.shape).round()
         boxes = filter_objects_by_roi(boxes, img0, half_planes)
-        boxes = filter_objects_by_size(boxes, min_sizes)
+        # boxes = filter_objects_by_size(boxes, min_sizes)
+
+        # bicycle -> motorbike, truck -> car
+        # print(boxes.dtype)
+        boxes[:, 5] = torch.where(boxes[:, 5] == 1.0, torch.tensor(3.0, dtype=torch.float, device=device), boxes[:, 5])
+        boxes[:, 5] = torch.where(boxes[:, 5] == 7.0, torch.tensor(2.0, dtype=torch.float, device=device), boxes[:, 5])
+
         boxes = tracker.update(boxes.detach().cpu().numpy())
 
         for *xyxy, obj_id, cls_id in boxes:
-            cls_id = int(cls_id)
             obj_id = int(obj_id)
-            # bicycle -> motorbike, truck -> car
-            if cls_id == 1:
-                cls_id = 3
-            elif cls_id == 7:
-                cls_id = 2
+            cls_id = int(cls_id)
 
             c = class_names[cls_id]
             area = int((xyxy[2] - xyxy[0]) * (xyxy[3] -xyxy[1]))
@@ -173,6 +181,7 @@ if __name__ == "__main__":
                 break
         pbar.update(1)
 
+    print([trk.id + 1 for trk in tracker.trackers])
     pbar.close()
     vid.release()
     cv2.destroyAllWindows()
