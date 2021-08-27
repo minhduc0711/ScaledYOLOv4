@@ -116,12 +116,13 @@ if __name__ == "__main__":
 
     # video: chua_boc_input
     half_planes = [
-        (0.2, 300, False)
+        (0.1, 400, False)
     ]
     min_sizes = None
 
     num_frames = int(vid.get(cv2.CAP_PROP_FRAME_COUNT))
     pbar = tqdm(total=num_frames)
+    
     while True:
         ret, img0 = vid.read()
         if not ret:
@@ -141,31 +142,32 @@ if __name__ == "__main__":
         pred = non_max_suppression(pred, 0.5, 0.3, classes=[1, 2, 3, 5, 7], agnostic=False)
 
         boxes = pred[0]
-        boxes[:, :4] = scale_coords(img.shape[2:], boxes[:, :4], img0.shape).round()
-        boxes = filter_objects_by_roi(boxes, img0, half_planes)
-        # boxes = filter_objects_by_size(boxes, min_sizes)
+        if boxes is not None:
+            boxes[:, :4] = scale_coords(img.shape[2:], boxes[:, :4], img0.shape).round()
+            boxes = filter_objects_by_roi(boxes, img0, half_planes)
+            # boxes = filter_objects_by_size(boxes, min_sizes)
 
-        # bicycle -> motorbike, truck -> car
-        # print(boxes.dtype)
-        boxes[:, 5] = torch.where(boxes[:, 5] == 1.0, torch.tensor(3.0, dtype=torch.float, device=device), boxes[:, 5])
-        boxes[:, 5] = torch.where(boxes[:, 5] == 7.0, torch.tensor(2.0, dtype=torch.float, device=device), boxes[:, 5])
+            # bicycle -> motorbike, truck -> car
+            boxes[:, 5] = torch.where(boxes[:, 5] == 1.0, torch.tensor(3.0, dtype=torch.float, device=device), boxes[:, 5])
+            boxes[:, 5] = torch.where(boxes[:, 5] == 7.0, torch.tensor(2.0, dtype=torch.float, device=device), boxes[:, 5])
 
-        boxes = tracker.update(boxes.detach().cpu().numpy())
+            boxes = tracker.update(boxes.detach().cpu().numpy(),
+                                current_time=vid.get(cv2.CAP_PROP_POS_MSEC) / 1000)
 
-        for *xyxy, obj_id, cls_id in boxes:
-            obj_id = int(obj_id)
-            cls_id = int(cls_id)
+            for *xyxy, obj_id, cls_id in boxes:
+                obj_id = int(obj_id)
+                cls_id = int(cls_id)
 
-            c = class_names[cls_id]
-            area = int((xyxy[2] - xyxy[0]) * (xyxy[3] -xyxy[1]))
-            label = f"{c} - {obj_id} - {area}"
-            plot_one_box(xyxy, img0, label=label, color=colors[cls_id], line_thickness=2)
-            # if obj_id not in objects_appeared:
-                # objects_appeared.add(obj_id)
-                # class_counts[c] += 1
-                # if args.save_output:
-                #     logs.append([obj_id, c,
-                #                  vid.get(cv2.CAP_PROP_POS_MSEC) / 1000])
+                c = class_names[cls_id]
+                area = int((xyxy[2] - xyxy[0]) * (xyxy[3] -xyxy[1]))
+                label = f"{c} - {obj_id} - {area}"
+                plot_one_box(xyxy, img0, label=label, color=colors[cls_id], line_thickness=2)
+                # if obj_id not in objects_appeared:
+                    # objects_appeared.add(obj_id)
+                    # class_counts[c] += 1
+                    # if args.save_output:
+                    #     logs.append([obj_id, c,
+                    #                  vid.get(cv2.CAP_PROP_POS_MSEC) / 1000])
 
         count_str = ", ".join(
             [f"{class_names[k]}: {v}" for k, v in tracker.class_counts.items()]
@@ -181,11 +183,10 @@ if __name__ == "__main__":
                 break
         pbar.update(1)
 
-    print([trk.id + 1 for trk in tracker.trackers])
     pbar.close()
     vid.release()
     cv2.destroyAllWindows()
     if args.save_output:
         out_video.release()
-        # pd.DataFrame(logs).to_csv(logs_path, index=False,
-        #                           header=["object_id", "class", "timestamp"])
+        pd.DataFrame(tracker.logs).to_csv(logs_path, index=False,
+                                          header=["object_id", "class", "timestamp"])

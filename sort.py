@@ -214,9 +214,11 @@ class Sort(object):
         self.iou_threshold = iou_threshold
         self.trackers = []
         self.frame_count = 0
+        # Extra logging vars
         self.class_counts = defaultdict(lambda: 0)
+        self.logs = []
 
-    def update(self, dets=np.empty((0, 5))):
+    def update(self, dets=np.empty((0, 5)), current_time=None):
         """
         Params:
             dets - a numpy array of detections in the format [[x1,y1,x2,y2,score],[x1,y1,x2,y2,score],...]
@@ -237,7 +239,7 @@ class Sort(object):
                 to_del.append(t)
         trks = np.ma.compress_rows(np.ma.masked_invalid(trks))
         for t in reversed(to_del):
-            self.remove_tracker(t)
+            self.remove_tracker(t, current_time)
         matched, unmatched_dets, unmatched_trks = associate_detections_to_trackers(dets,trks, self.iou_threshold)
 
         # update matched trackers with assigned detections
@@ -257,12 +259,12 @@ class Sort(object):
             i -= 1
             # remove dead tracklet
             if(trk.time_since_update > self.max_age):
-                self.remove_tracker(i)
+                self.remove_tracker(i, current_time)
         if(len(ret)>0):
             return np.concatenate(ret)
         return np.empty((0,5))
 
-    def remove_tracker(self, t):
+    def remove_tracker(self, t, current_time):
         trk = self.trackers.pop(t)
         if trk.last_bbox is not None:
             # first_size = (trk.first_bbox[2] - trk.first_bbox[0]) * (trk.first_bbox[3] - trk.first_bbox[1])
@@ -270,14 +272,7 @@ class Sort(object):
             if trk.first_bbox[0] < trk.last_bbox[0]:
                 # TODO: log timestamps here as well
                 self.class_counts[trk.objclass] += 1
-                if trk.objclass == 3:
-                    print(f"moto{trk.id + 1} ACCEPTED: {trk.first_bbox[0]} -> {trk.last_bbox[0]}")
-            else:
-                if trk.objclass == 3:
-                    print(f"moto{trk.id + 1} rejected: {trk.first_bbox[0]} -> {trk.last_bbox[0]}")
-        else:
-            if trk.objclass == 3:
-                    print(f"moto{trk.id + 1} rejected: no last bbox")
+                self.logs.append([trk.id + 1, trk.objclass, current_time])
 
 def parse_args():
     """Parse input arguments."""
